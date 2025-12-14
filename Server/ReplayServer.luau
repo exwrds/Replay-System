@@ -49,7 +49,7 @@ local function ValidateCache(player: Player, cache: Types.PlayerCache)
 	return true;
 end
 
-local function GetRecentReplayBuffers(): (boolean, {buffer}) -- TODO: write ts
+local function GetRecentReplayBuffers(): (boolean, {buffer})
 	local listSuccess, dataStoreKeyPages = ProectedFunctionCall(ReplayBufferStore.ListKeysAsync, ReplayBufferStore, nil, nil, nil, true)
 	if not listSuccess or not dataStoreKeyPages then
 		return false, "API Fetch failed." :: any
