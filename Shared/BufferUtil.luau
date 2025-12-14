@@ -7,7 +7,7 @@
 
 -- // Native Function Cache
 
-local ItterateArray = pairs;
+local ItterateArray = ipairs;
 local CreateCFrame = CFrame.new;
 local CFrameFromEulerAngles = CFrame.fromEulerAnglesXYZ;
 local DegreesToRadians, RadiansToDegrees = math.rad, math.deg;
@@ -37,7 +37,7 @@ local BufferUtil = {}
 local BYTES_PER_CFRAME = 24;
 local BYTES_PER_FRAME = BYTES_PER_CFRAME * 7;
 local FPS_RATE = 60;
-
+local BODY_PARTS = { "HumanoidRootPart", "Head", "Left Arm", "Left Leg", "Right Arm", "Right Leg", "Torso" } -- Order is very important
 
 -- // Conversion Functions
 
@@ -73,12 +73,20 @@ local function BufferToCFrame(buf: buffer, offset: number): (CFrame, number)
 	return (CreateCFrame(x, y, z) * CFrameFromEulerAngles(roll, pitch, yaw)), offset + 24;
 end
 
-local function CaptureFrame(buf: buffer, offset: number, cframes: {CFrame}): number
+local function FrameToBuffer(buf: buffer, offset: number, cframes: {CFrame}): number
 	for _, cframe in ItterateArray(cframes) do
 		offset = CFrameToBuffer(buf, offset, cframe)
 	end
 	
 	return offset;
+end
+
+local function BufferToFrame(buf: buffer, offset: number): ({CFrame}, number)
+	local cframes = {}
+	for i = 1, 7 do
+		cframes[i], offset = BufferToCFrame(buf, offset)
+	end
+	return cframes, offset
 end
 
 -- // Util Functions
@@ -98,7 +106,7 @@ local function ValidateMapData(mapData: Types.MapData): Types.MapData
 end
 
 local function ReadReplayBuffer(replayBuffer: buffer): Types.ReplayMetaData
-	assert(typeof(replayBuffer) == "buffer", "Expected buffer!")
+	assert(typeof(replayBuffer) == "buffer", "BufferUtil.ReadReplayBuffer failed; Expected buffer!")
 	
 	local currentOffset = 0;
 	
@@ -129,7 +137,7 @@ end
 local function CreateReplayBuffer(mapData: Types.MapData, player: Player): Types.ReplayRecordingData
 	mapData = ValidateMapData(mapData)
 	if not mapData then
-		return error("MapData could not be validated!", 2);
+		return error("BufferUtil.CreateReplyBuffer failed; MapData could not be validated!", 2);
 	end
 	
 	local replayRecordingData = {}
@@ -187,17 +195,29 @@ local function CreateReplayBuffer(mapData: Types.MapData, player: Player): Types
 	replayRecordingData.ReplayBuffer = replayBuffer
 	replayRecordingData.MaxSize = bufferSize
 	replayRecordingData.BytesOffset = currentOffset
+	replayRecordingData.Character = plrCharacter
+	
+	replayRecordingData.RecordParts = {}
+	for _, bodyPart in ItterateArray(plrCharacter:GetChildren()) do
+		local insertIndex = table.find(BODY_PARTS, bodyPart.Name)
+		if insertIndex ~= nil then
+			table.insert(replayRecordingData.RecordParts, insertIndex, bodyPart)
+		end
+	end
 	
 	print("Replay Buffer created, size: " .. BytesToKB(bufferSize));
 	return replayRecordingData
 end
 
 return {
+	FPS_RATE = FPS_RATE,
+	BODY_PARTS = BODY_PARTS,
 	StringToBuffer = StringToBuffer,
 	BufferToString = BufferToString,
 	CFrameToBuffer = CFrameToBuffer,
 	BufferToCFrame = BufferToCFrame,
-	CaptureFrame = CaptureFrame,
+	FrameToBuffer = FrameToBuffer,
+	BufferToFrame = BufferToFrame,
 	CreateReplayBuffer = CreateReplayBuffer,
 	ReadReplayBuffer = ReadReplayBuffer
 }
