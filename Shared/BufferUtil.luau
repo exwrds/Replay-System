@@ -188,7 +188,7 @@ local function CreateReplayBuffer(mapData: Types.MapData, player: Player): Types
 	replayRecordingData.MaxSize = bufferSize
 	replayRecordingData.BytesOffset = currentOffset
 	
-	print("Replay Buffer created, size: " .. BytesToKB(bufferSize))
+	print("Replay Buffer created, size: " .. BytesToKB(bufferSize));
 	return replayRecordingData
 end
 
