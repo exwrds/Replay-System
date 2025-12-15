@@ -1,6 +1,6 @@
 --!strict
 --[=[
-	Types.luau
+	Types.luau | Author: @exwrdss
 ]=]
 
 export type PlayerCache = { CanSave: boolean, CacheUnixTimestamp: number }
