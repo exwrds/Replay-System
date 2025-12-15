@@ -49,7 +49,7 @@ local function ValidateCache(player: Player, cache: Types.PlayerCache)
 	return true;
 end
 
-local function GetRecentReplayBuffers(): (boolean, {buffer})
+local function GetRecentReplayBuffers(): (boolean, {buffer}) -- TODO: write ts
 	local listSuccess, dataStoreKeyPages = ProectedFunctionCall(ReplayBufferStore.ListKeysAsync, ReplayBufferStore, nil, nil, nil, true)
 	if not listSuccess or not dataStoreKeyPages then
 		return false, "API Fetch failed." :: any
@@ -60,7 +60,7 @@ local function GetRecentReplayBuffers(): (boolean, {buffer})
 	local tasksLeft = #pages
 	
 	for _, dataStoreKey: DataStoreKey in ItterateDict(pages) do
-		ImmediateNewTask(ProectedFunctionCall, ReplayBufferStore.UpdateAsync, ReplayBufferStore, dataStoreKey.KeyName, function(exisitingData: {buffer})
+		ImmediateNewTask(ProectedFunctionCall, ReplayBufferStore.UpdateAsync, ReplayBufferStore, (dataStoreKey :: any).KeyName, function(exisitingData: {buffer})
 			if not exisitingData then
 				exisitingData = {}
 			else
@@ -85,7 +85,7 @@ local function CanSaveReplayBuffer(player: Player)
 	
 	local canSave: boolean
 	
-	local saveSuccess, errCallback = ProectedFunctionCall(ReplayBufferStore.UpdateAsync, ReplayBufferStore, player.UserId, function(exisitingData: {buffer})
+	local saveSuccess, errCallback = ProectedFunctionCall(ReplayBufferStore.UpdateAsync, ReplayBufferStore, player.UserId :: any, function(exisitingData: {buffer})
 		if not exisitingData then
 			exisitingData = {}
 		end
@@ -98,7 +98,7 @@ local function CanSaveReplayBuffer(player: Player)
 end
 
 local function SaveReplayBuffer(player: Player, replayBuffer: buffer): (boolean)
-	local saveSuccess, errCallback = ProectedFunctionCall(ReplayBufferStore.UpdateAsync, ReplayBufferStore, player.UserId, function(exisitingData: {buffer})
+	local saveSuccess, errCallback = ProectedFunctionCall(ReplayBufferStore.UpdateAsync, ReplayBufferStore, player.UserId :: any, function(exisitingData: {buffer})
 		if not exisitingData then
 			exisitingData = {}
 		end
@@ -106,7 +106,7 @@ local function SaveReplayBuffer(player: Player, replayBuffer: buffer): (boolean)
 		table.insert(exisitingData, replayBuffer)
 		return exisitingData
 	end)
-	
+
 	return saveSuccess
 end 
 
@@ -123,23 +123,24 @@ end
 
 RunService.Heartbeat:Connect(function(deltaTime: number)
 	DeltaAccumalator += deltaTime;
-	if (DeltaAccumalator < FPS_Rate) then return; end
-	DeltaAccumalator = 0;
-	
-	for player, recordingSession in ItterateDict(RecordingSessionsHandler) do
-		if recordingSession.StopRecording then
-			task.spawn(SaveReplayBuffer, player, recordingSession.ReplayBuffer)
-			RecordingSessionsHandler[player] = nil;
-			return;
+	while DeltaAccumalator >= FPS_Rate do
+		for player, recordingSession in ItterateDict(RecordingSessionsHandler) do
+			if recordingSession.StopRecording then
+				task.spawn(SaveReplayBuffer, player, recordingSession.ReplayBuffer)
+				RecordingSessionsHandler[player] = nil;
+				return;
+			end
+
+			local cframes = {}
+			for insertIndex, recordPart in OrderItterateDict(recordingSession.RecordParts) do
+				cframes[insertIndex] = recordPart.CFrame
+			end
+
+			recordingSession.BytesOffset = FrameToBuffer(recordingSession.ReplayBuffer, recordingSession.BytesOffset, cframes)
+			recordingSession.StopRecording = recordingSession.BytesOffset >= recordingSession.MaxSize;
 		end
 		
-		local cframes = {}
-		for insertIndex, recordPart in OrderItterateDict(recordingSession.RecordParts) do
-			Table_Insert(cframes, insertIndex, recordPart.CFrame)
-		end
-		
-		recordingSession.BytesOffset = FrameToBuffer(recordingSession.ReplayBuffer, recordingSession.BytesOffset, cframes)
-		recordingSession.StopRecording = recordingSession.BytesOffset >= recordingSession.MaxSize;
+		DeltaAccumalator -= FPS_Rate
 	end
 end)
 
