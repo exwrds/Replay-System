@@ -1,5 +1,5 @@
-# Replay System (Open Source)
+# Open Source Replay System
 
-An open-source replay system designed for high-fidelity recording at **60 FPS (Default, you can change it)** while using **buffer-based storage** for compact data usage (Aimed at the R6 Character Type)
+This open-source replay system uses buffer-based storage for small and effective data usage and is intended for fluid playback at the default 60 FPS (configurable). Although support for R15 can be added if desired, its main target is the R6 character type.
 
-The system is flexible ngl so feel free to modify or refactor parts of the code to better suit your game’s mechanics and stuff
+Because of the system's adaptability, you are welcome to change or reorganise certain sections of the code to better fit the logic and needs of your game.
