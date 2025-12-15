@@ -7,7 +7,7 @@
 
 -- // Native Function Cache
 
-local ItterateArray = ipairs;
+local OrderItterateDict = ipairs;
 local CreateCFrame = CFrame.new;
 local CFrameFromEulerAngles = CFrame.fromEulerAnglesXYZ;
 local DegreesToRadians, RadiansToDegrees = math.rad, math.deg;
@@ -70,11 +70,11 @@ local function BufferToCFrame(buf: buffer, offset: number): (CFrame, number)
 	local x, y, z = Buffer_ReadFloat32(buf, offset), Buffer_ReadFloat32(buf, offset + 4), Buffer_ReadFloat32(buf, offset + 8)
 	local roll, pitch, yaw = Buffer_ReadFloat32(buf, offset + 12), Buffer_ReadFloat32(buf, offset + 16), Buffer_ReadFloat32(buf, offset + 20)
 	roll, pitch, yaw = RadiansToDegrees(roll), RadiansToDegrees(pitch), RadiansToDegrees(yaw)
-	return (CreateCFrame(x, y, z) * CFrameFromEulerAngles(roll, pitch, yaw)), offset + 24;
+	return (CreateCFrame(x, y, z) * CFrameFromEulerAngles(roll, pitch, yaw :: any)), offset + 24;
 end
 
 local function FrameToBuffer(buf: buffer, offset: number, cframes: {CFrame}): number
-	for _, cframe in ItterateArray(cframes) do
+	for _, cframe in OrderItterateDict(cframes) do
 		offset = CFrameToBuffer(buf, offset, cframe)
 	end
 	
@@ -142,7 +142,7 @@ local function CreateReplayBuffer(mapData: Types.MapData, player: Player): Types
 	
 	local replayRecordingData = {}
 	
-	local plrCharacter: Types.TemplateCharacter = player.Character
+	local plrCharacter = player.Character :: Types.TemplateCharacter
 	if not plrCharacter then
 		warn("BufferUtil.CreateReplayBuffer failed; there must be an alive character of the player passed.")
 		return nil :: any
@@ -198,15 +198,17 @@ local function CreateReplayBuffer(mapData: Types.MapData, player: Player): Types
 	replayRecordingData.Character = plrCharacter
 	
 	replayRecordingData.RecordParts = {}
-	for _, bodyPart in ItterateArray(plrCharacter:GetChildren()) do
+	for _, bodyPart in OrderItterateDict(plrCharacter:GetChildren()) do
+		if not bodyPart:IsA("BasePart") then continue; end
+		
 		local insertIndex = table.find(BODY_PARTS, bodyPart.Name)
 		if insertIndex ~= nil then
-			table.insert(replayRecordingData.RecordParts, insertIndex, bodyPart)
+			replayRecordingData.RecordParts[insertIndex] = bodyPart :: Part
 		end
 	end
 	
 	print("Replay Buffer created, size: " .. BytesToKB(bufferSize));
-	return replayRecordingData
+	return replayRecordingData :: any
 end
 
 return {
