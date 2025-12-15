@@ -3,16 +3,17 @@
 --!native
 --[=[
 	ReplayClient.luau | Author: @exwrdss
-	make it so the replay dummy starts at the first frame
 ]=]
 
 -- // Loaded Serivces
 local RunService = game:GetService("RunService")
+local PhysicsService = game:GetService("PhysicsService")
 local PlayersService = game:GetService("Players")
 
 -- // Dependencies
 local Types = require("../Shared/Types")
 local BufferUtil = require("../Shared/BufferUtil")
+local Config = require("../Config")
 
 -- // Module Table
 local ReplayClient = {}
@@ -21,9 +22,7 @@ ReplayClient.__index = ReplayClient
 -- // Public Funcs
 
 local function CreateReplayPlayer(replayMetadata: Types.ReplayMetaData): Types.ReplayPlayer
-	if not replayMetadata then
-		return nil :: any;
-	end
+	assert(replayMetadata, "No Replay MetaData received!")
 	
 	local replayPlayer = {}
 	
@@ -43,23 +42,22 @@ local function CreateReplayPlayer(replayMetadata: Types.ReplayMetaData): Types.R
 		if not bodyPart:IsA("BasePart") then continue; end
 		local insertIndex = table.find(BufferUtil.BODY_PARTS, bodyPart.Name)
 		if not insertIndex then continue; end
+		
 		recordParts[insertIndex] = bodyPart :: Part
 		
 		bodyPart.Anchored = true
 		bodyPart.CanCollide = false
-		
-		bodyPart:GetPropertyChangedSignal("Anchored"):Connect(function()
-			bodyPart.Anchored = true
-		end)
-		
-		bodyPart:GetPropertyChangedSignal("CanCollide"):Connect(function()
-			bodyPart.CanCollide = false
-		end)
+		bodyPart.CollisionGroup = Config.ReplayCollisionGroup
 	end
 	
 	replayPlayer.ReplayCharacter = replayCharacter
-	replayPlayer.ReplayCharacter.Parent = workspace
+	replayCharacter.Parent = workspace
 	replayPlayer.ReplayParts = recordParts
+	
+	local initCframes = BufferUtil.BufferToFrame(replayPlayer.ReplayMetaData.ReplayBuffer, replayPlayer.BytesOffset)
+	for i, bodyPart in ipairs(recordParts) do
+		bodyPart.CFrame = initCframes[i];
+	end
 	
 	setmetatable(replayPlayer, ReplayClient)
 
@@ -154,7 +152,7 @@ function ReplayClient:CreateHeartbeatConnection(): Types.ReplayPlayer
 	return self;
 end
 
-function ReplayClient:EndHeartbeatConnetion(_replayFinished): Types.ReplayPlayer
+function ReplayClient:EndHeartbeatConnection(_replayFinished): Types.ReplayPlayer
 	if not self.HeartbeatConnection then
 		warn("ReplayPlayer:EndHeartbeatConnection() failed; Can not end a Heartbeat connection which does not exist.")
 		return self;
@@ -185,7 +183,7 @@ function ReplayClient:PauseReplay(): Types.ReplayPlayer
 		return self;
 	end
 	
-	self:EndHeartbeatConnetion()
+	self:EndHeartbeatConnection()
 	return self;
 end
 
