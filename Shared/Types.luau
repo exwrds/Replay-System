@@ -52,4 +52,4 @@ export type ReplayPlayer = {
 	ResumeReplay: (self: ReplayPlayer) -> ReplayPlayer,
 }
 
-return { TemplateCharacter = script:WaitForChild("TemplateCharacter") }
+return {TemplateCharacter = script:WaitForChild("TemplateCharacter")
