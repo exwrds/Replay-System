@@ -179,7 +179,7 @@ end
 
 function ReplayClient:PauseReplay(): Types.ReplayPlayer
 	if not self.IsPlaying then
-		warn("ReplayPlayer:PauseReplay() failed; Can not pause replay when it is already pauses / has not started.")
+		warn("ReplayPlayer:PauseReplay() failed; Can not pause replay when it is already paused / has not started.")
 		return self;
 	end
 	
@@ -199,5 +199,5 @@ end
 
 return {
 	OnNewBuffersReceived = OnNewBuffersReceived,
-	CreateReplayPlayerAsync = CreateReplayPlayer
+	CreateReplayPlayer = CreateReplayPlayer
 }
