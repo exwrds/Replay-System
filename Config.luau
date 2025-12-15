@@ -1,4 +1,7 @@
 --!strict
+--[=[
+	Config.luau | Author: @exwrdss
+]=]
 
 -- // Loaded Services
 local PhysicsService = game:GetService("PhysicsService")
