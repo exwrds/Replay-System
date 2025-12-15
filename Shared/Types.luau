@@ -30,4 +30,26 @@ export type ReplayMetaData = {
 	MaxSize: number
 }
 
-return {}
+export type ReplayPlayer = {
+	ReplayMetaData: ReplayMetaData,
+	BytesOffset: number,
+	
+	ReplayCharacter: TemplateCharacter,
+	ReplayParts: {Part},
+	
+	HasFinished: boolean,
+	IsPlaying: boolean,
+	HasStarted: boolean,
+	HeartbeatConnection: RBXScriptConnection,
+	
+	UpdateReplayPlayerAppearanceAsync: (self: ReplayPlayer, HumanoidDescription: HumanoidDescription) -> ReplayPlayer,
+	
+	CreateHeartbeatConnection: (self: ReplayPlayer) -> ReplayPlayer,
+	EndHeartbeatConnetion: (self: ReplayPlayer) -> ReplayPlayer,
+	
+	StartReplay: (self: ReplayPlayer) -> ReplayPlayer,
+	PauseReplay: (self: ReplayPlayer) -> ReplayPlayer,
+	ResumeReplay: (self: ReplayPlayer) -> ReplayPlayer,
+}
+
+return { TemplateCharacter = script:WaitForChild("TemplateCharacter") }
