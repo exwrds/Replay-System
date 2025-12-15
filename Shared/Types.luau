@@ -45,7 +45,7 @@ export type ReplayPlayer = {
 	UpdateReplayPlayerAppearanceAsync: (self: ReplayPlayer, HumanoidDescription: HumanoidDescription) -> ReplayPlayer,
 	
 	CreateHeartbeatConnection: (self: ReplayPlayer) -> ReplayPlayer,
-	EndHeartbeatConnetion: (self: ReplayPlayer) -> ReplayPlayer,
+	EndHeartbeatConnection: (self: ReplayPlayer) -> ReplayPlayer,
 	
 	StartReplay: (self: ReplayPlayer) -> ReplayPlayer,
 	PauseReplay: (self: ReplayPlayer) -> ReplayPlayer,
