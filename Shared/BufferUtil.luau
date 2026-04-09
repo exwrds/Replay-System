@@ -77,7 +77,7 @@ local function FrameToBuffer(buf: buffer, offset: number, cframes: {CFrame}): nu
 	for _, cframe in OrderItterateDict(cframes) do
 		offset = CFrameToBuffer(buf, offset, cframe)
 	end
-	
+
 	return offset;
 end
 
@@ -91,7 +91,7 @@ end
 
 -- // Util Functions
 
-local function ValidateMapData(mapData: Types.MapData): Types.MapData
+local function ValidateMapData(mapData: Types.ReplayMapData): Types.ReplayMapData
 	if type(mapData) ~= "table" then return false :: any; end
 
 	if not mapData.MapName then return false :: any; end
@@ -107,12 +107,12 @@ end
 
 local function ReadReplayBuffer(replayBuffer: buffer): Types.ReplayMetaData
 	assert(typeof(replayBuffer) == "buffer", "BufferUtil.ReadReplayBuffer failed; Expected buffer!")
-	
+
 	local currentOffset = 0;
-	
+
 	local userId = Buffer_ReadFloat64(replayBuffer, 0)
 	currentOffset += 8;
-	
+
 	local unixTimestamp = Buffer_ReadFloat32(replayBuffer, currentOffset)
 	currentOffset += 4;
 
@@ -121,7 +121,7 @@ local function ReadReplayBuffer(replayBuffer: buffer): Types.ReplayMetaData
 	local mapCFrame, currentOffset = BufferToCFrame(replayBuffer, currentOffset)
 	local frameRate = Buffer_ReadUnsigned8(replayBuffer, currentOffset)
 	currentOffset += 1;
-	
+
 	return {
 		MapName = mapName,
 		MapCFrame = mapCFrame,
@@ -134,34 +134,34 @@ local function ReadReplayBuffer(replayBuffer: buffer): Types.ReplayMetaData
 	}
 end
 
-local function CreateReplayBuffer(mapData: Types.MapData, player: Player): Types.ReplayRecordingData
+local function CreateReplayBuffer(mapData: Types.ReplayMapData, player: Player): Types.ReplayRecordingData
 	mapData = ValidateMapData(mapData)
 	if not mapData then
 		return error("BufferUtil.CreateReplyBuffer failed; MapData could not be validated!", 2);
 	end
-	
+
 	local replayRecordingData = {}
-	
+
 	local plrCharacter = player.Character :: Types.TemplateCharacter
 	if not plrCharacter then
 		warn("BufferUtil.CreateReplayBuffer failed; there must be an alive character of the player passed.")
 		return nil :: any
 	end
-	
+
 	local healthChangedSignal: RBXScriptConnection
 	healthChangedSignal = plrCharacter.Humanoid:GetPropertyChangedSignal("Health"):Connect(function()
 		if plrCharacter.Humanoid.Health == 0 then -- player has died
 			replayRecordingData.StopRecording = true;
-			
+
 			healthChangedSignal:Disconnect()
 			healthChangedSignal = nil :: any
 		end
 	end)
-	
+
 	player.AncestryChanged:Once(function(_, newParent: Instance?)
 		if not newParent then
 			replayRecordingData.StopRecording = true;
-			
+
 			if healthChangedSignal then
 				healthChangedSignal:Disconnect()
 				healthChangedSignal = nil :: any
@@ -169,44 +169,46 @@ local function CreateReplayBuffer(mapData: Types.MapData, player: Player): Types
 		end
 	end)
 	
+	mapData.MapTime += 2; -- abit of extra space
+
 	-- Create Replay Buffer
 	local bufferSize = ((mapData.MapName:len() + 1) + BYTES_PER_CFRAME + 8 + 4 + 1) + ((BYTES_PER_FRAME * 60) * mapData.MapTime)
 	local replayBuffer = buffer.create(bufferSize)
 	local currentOffset = 0;
-	
+
 	-- Write UserID (8 Bytes)
 	Buffer_WriteFloat64(replayBuffer, 0, player.UserId)
 	currentOffset += 8;
-	
+
 	-- Write Unix Timestamp (4 Bytes)
 	Buffer_WriteFloat32(replayBuffer, currentOffset, os.time())
 	currentOffset += 4;
-	
+
 	-- Write MapName (Bytes Varies)
 	currentOffset = StringToBuffer(replayBuffer, currentOffset, mapData.MapName)
-	
+
 	-- Write MapCFrame (24 Bytes)
 	currentOffset = CFrameToBuffer(replayBuffer, currentOffset, mapData.MapCFrame)
-	
+
 	-- Write FrameRate (1 Byte)
 	Buffer_WriteUnsigned8(replayBuffer, currentOffset, FPS_RATE)
 	currentOffset += 1;
-	
+
 	replayRecordingData.ReplayBuffer = replayBuffer
 	replayRecordingData.MaxSize = bufferSize
 	replayRecordingData.BytesOffset = currentOffset
 	replayRecordingData.Character = plrCharacter
-	
+
 	replayRecordingData.RecordParts = {}
 	for _, bodyPart in OrderItterateDict(plrCharacter:GetChildren()) do
 		if not bodyPart:IsA("BasePart") then continue; end
-		
+
 		local insertIndex = table.find(BODY_PARTS, bodyPart.Name)
 		if insertIndex ~= nil then
 			replayRecordingData.RecordParts[insertIndex] = bodyPart :: Part
 		end
 	end
-	
+
 	print("Replay Buffer created, size: " .. BytesToKB(bufferSize));
 	return replayRecordingData :: any
 end

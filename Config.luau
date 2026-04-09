@@ -23,7 +23,7 @@ local REPLAY_COLLISION_GROUP = (function()
 
 			PhysicsService:CollisionGroupSetCollidable(collisionGroupName, groupName, false)
 		end
-		
+
 		print("Successfully setup replay collision group.")
 	end
 
