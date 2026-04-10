@@ -110,7 +110,7 @@ local function SaveReplayBuffer(player: Player, replay_buffer: buffer): boolean
 	
 	local successful_save = saveSuccess and update_success;
 	if successful_save then
-		CanSaveReplayCache[player] = { CanSave = stored_count, CacheUnixTimestamp = os.time() }
+		CanSaveReplayCache[player] = { CanSave = stored_count < 3, CacheUnixTimestamp = os.time() }
 	end
 	
 	return successful_save;
