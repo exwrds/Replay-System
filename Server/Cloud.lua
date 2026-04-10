@@ -178,7 +178,7 @@ local function GetRecentReplayBuffers(user_id: number?): (boolean, {{ReplayKey: 
 				if existing_data then
 					table.insert(recent_replay_buffers, {
 						ReplayBuffer = existing_data :: buffer,
-						ReplayKey = data_store_key.Name :: string
+						ReplayKey = data_store_key.KeyName :: string
 					})
 				end
 				
