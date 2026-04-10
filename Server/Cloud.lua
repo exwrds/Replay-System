@@ -172,14 +172,12 @@ local function GetRecentReplayBuffers(user_id: number?): (boolean, {{ReplayKey: 
 			ReplayBufferStore.UpdateAsync,
 			ReplayBufferStore,
 			data_store_key.KeyName,
-			function(existing_data: {buffer})
+			function(existing_data: buffer)
 				tasks_left -= 1;
 				
-				if not existing_data then
-					existing_data = {}
-				else
+				if existing_data then
 					table.insert(recent_replay_buffers, {
-						ReplayBuffer = existing_data[#existing_data] :: buffer,
+						ReplayBuffer = existing_data :: buffer,
 						ReplayKey = data_store_key.Name :: string
 					})
 				end
