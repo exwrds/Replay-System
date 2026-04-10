@@ -1,4 +1,4 @@
-# Open Source Replay System (exwrds)
+# Open Source Replay System
 
 This open-source replay system uses buffer-based storage for small and effective data usage and is intended for fluid playback at the default 60 FPS (configurable). Although support for R15 can be added if desired, its main target is the R6 character type.
 
