@@ -2,97 +2,137 @@
 --!optimize 2
 --!native
 --[=[
-	ReplayRecorder.luau | Author: @exwrdss
-	
-	This module allows for multiple threads to be used for recording.
+	RecorderScript.lua | Author: @exwrdss
 ]=]
 
--- // Loaded Serivces
-local ServerScriptService = game:GetService("ServerScriptService")
+while not script:GetActor() do task.wait() end -- Yield until actor.
 
--- // Depenedencies
-local Types = require("../Shared/Types")
-local Cloud = require("./ReplayServer/Cloud")
+-- // Loaded Services
+local RunService = game:GetService("RunService")
 
--- // References
-local Buffer_Util = script.Parent.Parent.Shared.BufferUtil;
-local Template_Actor = script.RecorderThread_;
+-- // Types
+export type ReplayRecordingData = {
+	StopRecording: boolean?,
+	ReplayBuffer: buffer,
+	BytesOffset: number,
+	MaxSize: number,
+	Character: Model,
+	RecordParts: {Part}
+}
 
--- // 
-local RECORDER_PLAYER_MAP: {[number]: Actor} = {}
+-- // Dependencies
+local Buffer_Util = require(script.Parent.Parent.BufferUtilPointer.Value)
 
--- // Create Instances
-local Replay_Recorders_Directory = Instance.new("Folder", ServerScriptService)
-Replay_Recorders_Directory.Name = "ReplayRecorders";
+-- // Thread Variables
+local ALLOCATED_PLAYER: Player
+local REPLAY_RECORDING_DATA: ReplayRecordingData
+local CURRENT_CHARACTER: Model
 
-local Buffer_Util_Pointer = Instance.new("ObjectValue", Replay_Recorders_Directory)
-Buffer_Util_Pointer.Name = "BufferUtilPointer"; Buffer_Util_Pointer.Value = Buffer_Util;
+local THREAD_ACTOR = script:GetActor()
+local REPLAY_RECORDING_FINISHED_BINDABLE = script.Parent.ReplayRecordingFinished
+local HEART_BEAT_CONNECTION: RBXScriptConnection
 
-local function CreateRecorderThreadForPlayer(player_instance: Player): Actor
-	if typeof(player_instance) ~= "Instance" or not player_instance:IsA("Player") then
-		warn("ReplayRecorder.CreateRecorderThreadForPlayer() failed, Player instance is undefined / not a player.")
-		return nil :: any;
+local FPS_RATE = 1 / Buffer_Util.FPS_RATE
+local DELTA_ACCUMALATOR = 0;
+
+-- // Main Function
+
+local function EndHeartbeatConnection()
+	task.synchronize()
+	if HEART_BEAT_CONNECTION then
+		HEART_BEAT_CONNECTION:Disconnect()
+		HEART_BEAT_CONNECTION = nil :: any
 	end
-	
-	local recorder_thread = RECORDER_PLAYER_MAP[player_instance.UserId]
-	if recorder_thread then
-		return recorder_thread;
-	end
-	
-	recorder_thread = Template_Actor:Clone()
-	
-	recorder_thread.ReplayRecordingFinished.Event:Connect(function(replay_buffer)
-		local replay_server = require("./ReplayServer") :: any
-		replay_server.RecordingStates[player_instance] = nil
-		Cloud.SaveReplayBuffer(player_instance, replay_buffer)
-	end)
-	
-	recorder_thread.Parent = Replay_Recorders_Directory
-	recorder_thread.Name ..= player_instance.UserId
-	recorder_thread.RecorderScript.Enabled = true
-
-	recorder_thread.ActorInitialised.Event:Wait()
-	
-	recorder_thread:SendMessage("AllocatedPlayer", player_instance)
-	RECORDER_PLAYER_MAP[player_instance.UserId] = recorder_thread;
-	
-	return recorder_thread;
+	task.desynchronize()
 end
 
-local function GetRecorderThreadForPlayer(player_instance: Player, reconcile: boolean?): Actor
-	if typeof(player_instance) ~= "Instance" or not player_instance:IsA("Player") then
-		warn("ReplayRecorder.GetRecorderThreadForPlayer() failed, Player instance is undefined / not a player.")
-		return nil :: any;
-	end
-
-	local recorder_thread = RECORDER_PLAYER_MAP[player_instance.UserId]
-	if recorder_thread then
-		return recorder_thread;
-	end
-
-	if not reconcile then return nil :: any end
-
-	recorder_thread = CreateRecorderThreadForPlayer(player_instance)
-	return recorder_thread
-end
-
-local function DestroyRecorderThreadForPlayer(player_instance: Player): ...any
-	if typeof(player_instance) ~= "Instance" or not player_instance:IsA("Player") then
-		warn("ReplayRecorder.CreateRecorderThreadForPlayer() failed, Player instance is undefined / not a player.")
-		return nil :: any;
-	end
+local function CreateHeartbeatConnection()
+	EndHeartbeatConnection()
 	
-	local recorder_thread = GetRecorderThreadForPlayer(player_instance)
-	if not recorder_thread then
+	if not REPLAY_RECORDING_DATA then
 		return;
 	end
 	
-	recorder_thread:Destroy()
-	RECORDER_PLAYER_MAP[player_instance.UserId] = nil
+	local order_itterate_dict = ipairs
+	local frame_to_buffer = Buffer_Util.FrameToBuffer;
+	
+	task.synchronize()
+	HEART_BEAT_CONNECTION = RunService.Heartbeat:ConnectParallel(function(delta_time)
+		task.desynchronize()
+		
+		DELTA_ACCUMALATOR += delta_time
+		while DELTA_ACCUMALATOR >= FPS_RATE do
+			
+			if REPLAY_RECORDING_DATA.StopRecording then
+				task.synchronize()
+				REPLAY_RECORDING_FINISHED_BINDABLE:Fire(REPLAY_RECORDING_DATA.ReplayBuffer)
+				task.desynchronize()
+				
+				EndHeartbeatConnection()
+				return;
+			end
+			
+			local cframes = {}
+			for insert_index, record_part in order_itterate_dict(REPLAY_RECORDING_DATA.RecordParts) do
+				cframes[insert_index] = record_part.CFrame
+			end
+			
+			REPLAY_RECORDING_DATA.BytesOffset = frame_to_buffer(REPLAY_RECORDING_DATA.ReplayBuffer, REPLAY_RECORDING_DATA.BytesOffset, cframes)
+			REPLAY_RECORDING_DATA.StopRecording = REPLAY_RECORDING_DATA.BytesOffset >= REPLAY_RECORDING_DATA.MaxSize;
+			
+			DELTA_ACCUMALATOR -= FPS_RATE;
+		end
+	end)
+	
 end
 
-return {
-	GetRecorderThreadForPlayer = GetRecorderThreadForPlayer,
-	CreateRecorderThreadForPlayer = CreateRecorderThreadForPlayer,
-	DestroyRecorderThreadForPlayer = DestroyRecorderThreadForPlayer
-}
+-- // Data Listeners
+
+local DATA_MESSAGE_LISTENER: RBXScriptConnection
+DATA_MESSAGE_LISTENER = THREAD_ACTOR:BindToMessageParallel("AllocatedPlayer", function(allocated_player: Player)
+	ALLOCATED_PLAYER = allocated_player
+	
+	task.synchronize()
+	
+	local function on_character_added(character_model: Model)
+		if character_model == CURRENT_CHARACTER then return; end
+		
+		CURRENT_CHARACTER = character_model;
+		
+		local humanoid = character_model:WaitForChild("Humanoid") :: Humanoid
+		if not humanoid then return; end
+
+		character_model.AncestryChanged:Connect(function(_, new_parent)
+			if not new_parent then
+				REPLAY_RECORDING_DATA.StopRecording = true;
+			end
+		end)
+
+		humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+			if humanoid.Health == 0 then
+				REPLAY_RECORDING_DATA.StopRecording = true;
+			end
+		end)
+	end
+	
+	if ALLOCATED_PLAYER.Character then
+		on_character_added(ALLOCATED_PLAYER.Character)
+	end
+	
+	ALLOCATED_PLAYER.CharacterAdded:Connect(on_character_added)
+	
+	DATA_MESSAGE_LISTENER:Disconnect()
+end)
+
+THREAD_ACTOR:BindToMessageParallel("StartRecording", function(replay_recording_data: ReplayRecordingData)
+	REPLAY_RECORDING_DATA = replay_recording_data
+	CreateHeartbeatConnection()
+end)
+
+THREAD_ACTOR:BindToMessageParallel("StopRecording", function()
+	if REPLAY_RECORDING_DATA then
+		REPLAY_RECORDING_DATA.StopRecording = true;
+	end
+end)
+
+script.Parent.ActorInitialised:Fire()

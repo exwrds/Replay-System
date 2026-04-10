@@ -101,7 +101,7 @@ local function ValidateMapData(mapData: Types.ReplayMapData): Types.ReplayMapDat
 	return mapData
 end
 
-local function ReadReplayBuffer(replayBuffer: buffer): Types.ReplayMetaData
+local function ReadReplayBuffer(replayBuffer: buffer, replay_key : string): Types.ReplayMetaData
 	assert(typeof(replayBuffer) == "buffer", "BufferUtil.ReadReplayBuffer failed; Expected buffer!")
 
 	local currentOffset = 0;
@@ -126,7 +126,8 @@ local function ReadReplayBuffer(replayBuffer: buffer): Types.ReplayMetaData
 		ReplayBuffer = replayBuffer,
 		FrameRate = frameRate,
 		BytesOffset = currentOffset,
-		MaxSize = buffer.len(replayBuffer)
+		MaxSize = buffer.len(replayBuffer),
+		ReplayKey = replay_key
 	}
 end
 

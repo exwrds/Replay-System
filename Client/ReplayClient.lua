@@ -65,12 +65,12 @@ local function CreateReplayPlayer(replayMetadata: Types.ReplayMetaData): Types.R
 	return replayPlayer :: any;
 end
 
-local function OnNewBuffersReceived(buffersReceived: {buffer}): {Types.ReplayMetaData} -- unused, you can do what you want with this
+local function OnNewBuffersReceived(buffersReceived: {{ReplayBuffer: buffer, ReplayKey: string}}): {Types.ReplayMetaData} -- unused, you can do what you want with this
 	if not buffersReceived then return nil :: any; end
 
 	local converted = {}
-	for _, replayBuffer in pairs(buffersReceived) do
-		local metadata = BufferUtil.ReadReplayBuffer(replayBuffer)
+	for _, data in pairs(buffersReceived) do
+		local metadata = BufferUtil.ReadReplayBuffer(data.ReplayBuffer, data.ReplayKey)
 		if not metadata then continue; end
 		table.insert(converted, metadata)
 	end

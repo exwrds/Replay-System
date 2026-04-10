@@ -116,7 +116,7 @@ local function SaveReplayBuffer(player: Player, replay_buffer: buffer): boolean
 	return successful_save;
 end
 
-local function GetRecentReplayBuffers(user_id: number?): (boolean, {buffer})
+local function GetRecentReplayBuffers(user_id: number?): (boolean, {{ReplayKey: string, ReplayBuffer: buffer}})
 	if user_id then
 		local get_success, pointer_data = SafeDataStoreCall(
 			Enum.DataStoreRequestType.GetAsync,
@@ -129,7 +129,7 @@ local function GetRecentReplayBuffers(user_id: number?): (boolean, {buffer})
 			return get_success, {}
 		end
 		
-		local found_replays = {}
+		local found_replays: {{ReplayKey: string, ReplayBuffer: buffer}} = {}
 		for _, guid in pairs(pointer_data) do
 			local get_success, replay_data = SafeDataStoreCall(
 				Enum.DataStoreRequestType.GetAsync,
@@ -139,7 +139,11 @@ local function GetRecentReplayBuffers(user_id: number?): (boolean, {buffer})
 			);
 			
 			if not get_success or not replay_data then continue; end
-			table.insert(found_replays, replay_data);
+			
+			table.insert(found_replays, {
+				ReplayBuffer = replay_data :: buffer,
+				ReplayKey = guid :: string
+			})
 		end
 		
 		return true, found_replays;
@@ -157,7 +161,7 @@ local function GetRecentReplayBuffers(user_id: number?): (boolean, {buffer})
 		return false, {}
 	end
 	
-	local recent_replay_buffers = {}
+	local recent_replay_buffers: {{ReplayBuffer: buffer, ReplayKey: string}} = {}
 	local pages = key_pages:GetCurrentPage()
 	local tasks_left = #pages;
 	
@@ -174,7 +178,10 @@ local function GetRecentReplayBuffers(user_id: number?): (boolean, {buffer})
 				if not existing_data then
 					existing_data = {}
 				else
-					table.insert(recent_replay_buffers, existing_data[#existing_data])
+					table.insert(recent_replay_buffers, {
+						ReplayBuffer = existing_data[#existing_data] :: buffer,
+						ReplayKey = data_store_key.Name :: string
+					})
 				end
 				
 				return existing_data;

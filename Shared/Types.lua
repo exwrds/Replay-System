@@ -27,7 +27,8 @@ export type ReplayMetaData = {
 	ReplayBuffer: buffer,
 	FrameRate: number,
 	BytesOffset: number,
-	MaxSize: number
+	MaxSize: number,
+	ReplayKey: string
 }
 
 export type ReplayPlayer = {
