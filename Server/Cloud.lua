@@ -22,14 +22,14 @@ local ReplayBufferStore = DataStoreService:GetDataStore("ReplayBufferStore_V" ..
 
 -- // Data Functions
 
-local function YieldUntilAppropriateBudget(dataStoreRequestType: Enum.DataStoreRequestType)
-	while 0 > DataStoreService:GetRequestBudgetForRequestType(dataStoreRequestType) do
+local function YieldUntilAppropriateBudget(data_store_request_type: Enum.DataStoreRequestType)
+	while 0 > DataStoreService:GetRequestBudgetForRequestType(data_store_request_type) do
 		task.wait()
 	end
 end
 
-local function SafeDataStoreCall(dataStoreRequestType: Enum.DataStoreRequestType, data_function: (...any) -> ...any, ...): ...any
-	YieldUntilAppropriateBudget(dataStoreRequestType)
+local function SafeDataStoreCall(data_store_request_type: Enum.DataStoreRequestType, data_function: (...any) -> ...any, ...): ...any
+	YieldUntilAppropriateBudget(data_store_request_type)
 	
 	local result: any
 	for att = 1, 5 do
@@ -110,7 +110,6 @@ local function SaveReplayBuffer(player: Player, replay_buffer: buffer): boolean
 	
 	local successful_save = saveSuccess and update_success;
 	if successful_save then
-		print("Saved!")
 		CanSaveReplayCache[player] = { CanSave = stored_count, CacheUnixTimestamp = os.time() }
 	end
 	
@@ -193,7 +192,6 @@ end
 
 return {
 	CanSaveReplayCache = CanSaveReplayCache,
-	YieldUntilAppropriateBudget = YieldUntilAppropriateBudget,
 	SafeDataStoreCall = SafeDataStoreCall,
 	ValidateCache = ValidateCache,
 	CanSaveReplayBuffer = CanSaveReplayBuffer,
